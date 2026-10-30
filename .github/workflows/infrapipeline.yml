@@ -1,0 +1,73 @@
+name: Deploy Infrastructure
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+env:
+  AZURE_LOCATION: eastasia
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Select environment
+        shell: bash
+        run: |
+          case "$GITHUB_REF_NAME" in
+            dev)
+              PARAM_FILE=Modules/deploy.dev.bicepparam
+              ;;
+            main)
+              PARAM_FILE=Modules/deploy.prod.bicepparam
+              ;;
+            *)
+              echo "Unsupported branch: $GITHUB_REF_NAME"
+              exit 1
+              ;;
+          esac
+
+          AZURE_RESOURCE_GROUP=$(sed -n "s/\r$//; s/^param resourceGroupName = '\([^']*\)'$/\1/p" "$PARAM_FILE")
+          if [ -z "$AZURE_RESOURCE_GROUP" ]; then
+            echo "Could not read resourceGroupName from $PARAM_FILE."
+            exit 1
+          fi
+
+          echo "PARAM_FILE=$PARAM_FILE" >> "$GITHUB_ENV"
+          echo "AZURE_RESOURCE_GROUP=$AZURE_RESOURCE_GROUP" >> "$GITHUB_ENV"
+
+          if [ ! -f "$PARAM_FILE" ]; then
+            echo "Parameter file $PARAM_FILE does not exist."
+            exit 1
+          fi
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Deploy infrastructure
+        uses: azure/cli@v2
+        with:
+          inlineScript: |
+            echo "Deploying infrastructure for branch $GITHUB_REF_NAME using $PARAM_FILE"
+            if az deployment sub create \
+              --location "$AZURE_LOCATION" \
+              --template-file Modules/main.bicep \
+              --parameters "$PARAM_FILE"; then
+              exit 0
+            fi
+
+            echo "Nested deployment failure details:"
+            az deployment operation group list \
+              --resource-group "$AZURE_RESOURCE_GROUP" \
+              --name functionAppDeployment \
+              --query "[?properties.provisioningState=='Failed'].{target:properties.target,code:properties.statusCode,message:properties.statusMessage}" \
+              --output jsonc || true
+            exit 1

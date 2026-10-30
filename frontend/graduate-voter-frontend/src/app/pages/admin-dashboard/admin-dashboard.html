@@ -1,0 +1,47 @@
+<main class="dashboard-shell">
+  <header class="dashboard-header">
+    <div class="dashboard-brand">
+      <div class="brand">
+        <span class="brand-mark"><img src="/assets/the-voter-logo.png" alt="The Voter logo"></span>
+        <span>Graduate Voter 2026</span>
+      </div>
+      <span class="eyebrow">PRIVATE ADMIN AREA</span>
+      <h1>Welcome to Admin Dashboard</h1>
+    </div>
+
+    <button class="signout-btn" type="button" (click)="signOut()">
+      Sign Out
+    </button>
+  </header>
+
+  <section class="dashboard-content" aria-label="Dashboard actions">
+    <div class="download-card">
+      <span class="card-kicker">VOTER EXPORTS</span>
+      <h2>Download voter list</h2>
+      <p class="card-intro">Choose a constituency to download its latest voter CSV.</p>
+
+      <label class="constituency-label" for="download-constituency">Constituency</label>
+      <select id="download-constituency" class="constituency-select"
+        [(ngModel)]="selectedConstituency" [disabled]="isDownloading()">
+        @for (constituency of constituencies; track constituency) {
+          <option [value]="constituency">{{ constituency }}</option>
+        }
+      </select>
+      <button
+        class="download-btn"
+        type="button"
+        [disabled]="isDownloading()"
+        (click)="downloadCsv()"
+      >
+        {{ isDownloading() ? 'Downloading...' : 'Download CSV' }}
+      </button>
+
+      @if (downloadMessage()) {
+        <p class="feedback success" role="status">{{ downloadMessage() }}</p>
+      }
+      @if (downloadError()) {
+        <p class="feedback error" role="alert">{{ downloadError() }}</p>
+      }
+    </div>
+  </section>
+</main>

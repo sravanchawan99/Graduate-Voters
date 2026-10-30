@@ -1,0 +1,34 @@
+name: Deploy Application
+
+on:
+  push:
+    branches:
+      - dev
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy-infrastructure:
+    name: Step 1 - Deploy infrastructure
+    uses: ./.github/workflows/infrapipeline.yml
+    secrets: inherit
+
+  deploy-function:
+    name: Step 2 - Deploy Function App code
+    needs: deploy-infrastructure
+    uses: ./.github/workflows/function-pipeline.yml
+    secrets: inherit
+
+  deploy-static-web-app:
+    name: Step 3 - Deploy Static Web App
+    needs:
+      - deploy-infrastructure
+      - deploy-function
+    permissions:
+      contents: read
+      id-token: write
+    uses: ./.github/workflows/static-web-app-pipeline.yml
+    secrets: inherit

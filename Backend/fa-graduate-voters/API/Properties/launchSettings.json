@@ -1,0 +1,9 @@
+{
+  "profiles": {
+    "Integrations.Ascend.API.Accounts": {
+      "commandName": "Project",
+      "commandLineArgs": "--port 7187",
+      "launchBrowser": false
+    }
+  }
+}

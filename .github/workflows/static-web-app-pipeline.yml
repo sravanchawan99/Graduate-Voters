@@ -1,0 +1,99 @@
+name: Deploy Static Web App
+
+on:
+  workflow_call:
+    inputs:
+      configure_custom_domain:
+        description: Set true after the domain verification TXT record exists in DNS.
+        required: false
+        type: boolean
+        default: false
+    secrets:
+      AZURE_CREDENTIALS:
+        required: true
+      AZURE_STATIC_WEB_APPS_API_TOKEN_PROD:
+        required: false
+      AZURE_STATIC_WEB_APPS_API_TOKEN_DEV:
+        required: false
+  workflow_dispatch:
+    inputs:
+      configure_custom_domain:
+        description: Set true after the domain verification TXT record exists in DNS.
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Validate custom domain environment
+        if: inputs.configure_custom_domain && github.ref_name != 'main'
+        run: |
+          echo "The custom domain is configured only for the main (production) environment."
+          exit 1
+
+      - name: Azure Login
+        if: inputs.configure_custom_domain && github.ref_name == 'main'
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Configure custom domain infrastructure
+        if: inputs.configure_custom_domain && github.ref_name == 'main'
+        uses: azure/cli@v2
+        with:
+          inlineScript: |
+            az deployment sub create \
+              --location eastasia \
+              --template-file Modules/main.bicep \
+              --parameters Modules/deploy.prod.bicepparam configureCustomDomain=true
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/graduate-voter-frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend/graduate-voter-frontend
+        run: npm ci
+
+      - name: Get GitHub OIDC token
+        id: idtoken
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const token = await core.getIDToken()
+            core.setOutput('result', token)
+
+      - name: Build dev frontend
+        if: github.ref_name == 'dev'
+        working-directory: frontend/graduate-voter-frontend
+        run: npm run build -- --configuration development
+
+      - name: Build production frontend
+        if: github.ref_name == 'main'
+        working-directory: frontend/graduate-voter-frontend
+        run: npm run build -- --configuration production
+
+      - name: Deploy frontend to Azure Static Web Apps
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets[github.ref_name == 'dev' && 'AZURE_STATIC_WEB_APPS_API_TOKEN_DEV' || 'AZURE_STATIC_WEB_APPS_API_TOKEN_PROD'] }}
+          github_id_token: ${{ steps.idtoken.outputs.result }}
+          action: upload
+          app_location: frontend/graduate-voter-frontend/dist/graduate-voter-frontend/browser
+          output_location: ''
+          skip_app_build: true

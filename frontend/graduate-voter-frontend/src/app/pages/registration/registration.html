@@ -1,0 +1,353 @@
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-mark">
+      <img src="/assets/the-voter-logo.png" alt="The Voter logo">
+    </span>
+    <span>Graduate Voter 2026</span>
+  </div>
+
+  <a
+    class="back-link"
+    routerLink="/"
+  >
+    ← Home
+  </a>
+</header>
+
+
+<main class="registration-shell">
+
+  <section class="registration-card">
+
+    <div class="registration-header">
+
+      <div>
+        <span class="step">
+          STEP 1 OF 2
+        </span>
+
+        <h1>
+          Enter your details
+        </h1>
+
+        <p>
+          Provide the basic information below to continue
+          to official voter information services.
+        </p>
+      </div>
+
+      <span class="required-note">
+        * Required
+      </span>
+
+    </div>
+
+
+    <div class="notice-card">
+
+      <strong>
+        Important
+      </strong>
+
+      <span>
+        This is an independent information page. It is not
+        the official Election Commission of India website.
+      </span>
+
+    </div>
+
+
+    <form
+      #registrationForm="ngForm"
+      (ngSubmit)="submitForm()"
+      novalidate
+    >
+
+
+      <!-- CONSTITUENCY -->
+      <div class="form-group">
+
+        <label for="mlcConstituency">
+          MLC Council Constituency
+          <span>*</span>
+        </label>
+
+        <select
+          id="mlcConstituency"
+          name="mlcConstituency"
+          [(ngModel)]="mlcConstituency"
+          (change)="onConstituencyChange()"
+          required
+        >
+
+          <option value="">
+            Select Constituency
+          </option>
+
+          <option value="Mahabubnagar-Ranga Reddy-Hyderabad">
+            Mahabubnagar-Ranga Reddy-Hyderabad
+          </option>
+
+          <option value="Warangal-Khammam-Nalgonda">
+            Warangal-Khammam-Nalgonda
+          </option>
+
+        </select>
+
+        @if (constituencyError) {
+          <p class="error">
+            {{ constituencyError }}
+          </p>
+        }
+
+      </div>
+
+
+      <!-- DISTRICT -->
+      <div class="form-group">
+
+        <label for="districtName">
+          District Name
+          <span>*</span>
+        </label>
+
+        <select
+          id="districtName"
+          name="districtName"
+          [(ngModel)]="districtName"
+          [disabled]="!mlcConstituency"
+          required
+        >
+
+          <option value="">
+            Select District
+          </option>
+
+          @for (district of districts; track district) {
+
+            <option [value]="district">
+              {{ district }}
+            </option>
+
+          }
+
+        </select>
+
+        @if (districtError) {
+          <p class="error">
+            {{ districtError }}
+          </p>
+        }
+
+      </div>
+
+
+      <!-- NAME -->
+      <div class="form-group">
+
+        <label for="fullName">
+          Full Name
+          <span>*</span>
+        </label>
+
+        <input
+          id="fullName"
+          name="fullName"
+          type="text"
+          autocomplete="name"
+          placeholder="Enter your full name"
+          [(ngModel)]="fullName"
+          minlength="2"
+          required
+        >
+
+        @if (nameError) {
+          <p class="error">
+            {{ nameError }}
+          </p>
+        }
+
+      </div>
+
+
+      <!-- PHONE + YEAR -->
+      <div class="two-col">
+
+        <div class="form-group">
+
+          <label for="whatsapp">
+            WhatsApp Number
+            <span>*</span>
+          </label>
+
+          <div class="phone-wrap">
+
+            <span class="country-code">
+              +91
+            </span>
+
+            <input
+              id="whatsapp"
+              name="whatsapp"
+              type="tel"
+              inputmode="numeric"
+              autocomplete="tel"
+              placeholder="10-digit WhatsApp number"
+              maxlength="10"
+              [(ngModel)]="whatsapp"
+              (input)="sanitizePhone()"
+              required
+            >
+
+          </div>
+
+          @if (whatsappError) {
+            <p class="error">
+              {{ whatsappError }}
+            </p>
+          }
+
+        </div>
+
+
+        <div class="form-group">
+
+          <label for="graduationYear">
+            Graduation completed in
+            <span>*</span>
+          </label>
+
+          <select
+            id="graduationYear"
+            name="graduationYear"
+            [(ngModel)]="graduationYear"
+            required
+          >
+
+            <option [ngValue]="null">
+              Select year
+            </option>
+
+            @for (year of graduationYears; track year) {
+
+              <option [ngValue]="year">
+                {{ year }}
+              </option>
+
+            }
+
+          </select>
+
+          @if (yearError) {
+            <p class="error">
+              {{ yearError }}
+            </p>
+          }
+
+        </div>
+
+      </div>
+
+
+      <!-- EMAIL -->
+      <div class="form-group">
+
+        <label for="email">
+          Email Address
+          <small>(optional)</small>
+        </label>
+
+        <input
+          id="email"
+          name="email"
+          type="email"
+          autocomplete="email"
+          placeholder="you@example.com"
+          [(ngModel)]="email"
+        >
+
+        @if (emailError) {
+          <p class="error">
+            {{ emailError }}
+          </p>
+        }
+
+      </div>
+
+
+      <!-- ACKNOWLEDGEMENT -->
+      <label class="check-row">
+
+        <input
+          id="ack"
+          name="ack"
+          type="checkbox"
+          [(ngModel)]="ack"
+        >
+
+        <span>
+          I understand this is an independent information page
+          and that official voter information must be verified
+          through the appropriate official election website.
+        </span>
+
+      </label>
+
+      @if (ackError) {
+        <p class="error">
+          {{ ackError }}
+        </p>
+      }
+
+      <!-- SUBMIT -->
+      <button
+        class="submit-btn"
+        type="submit"
+        [disabled]="isSubmitting()"
+      >
+        {{ isSubmitting() ? 'Submitting...' : 'Continue' }}
+
+        <span>
+          →
+        </span>
+
+      </button>
+
+      @if (submitError()) {
+        <p class="submit-feedback" role="alert">
+          {{ submitError() }}
+        </p>
+      }
+
+    </form>
+
+
+    <div class="privacy-card">
+
+      <strong>
+        Privacy reminder
+      </strong>
+
+      <p>
+        Do not enter Aadhaar number, EPIC number, address,
+        date of birth, or other sensitive voter information
+        on this page.
+      </p>
+
+    </div>
+
+  </section>
+
+
+  <p class="disclaimer">
+    Not an official Government of Telangana or Election
+    Commission of India website. Use official government
+    websites for authoritative voter information.
+  </p>
+
+</main>
+
+
+<footer>
+  © 2026 thevoter.in. All rights reserved. · Independent information page
+</footer>

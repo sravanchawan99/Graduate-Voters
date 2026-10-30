@@ -1,0 +1,84 @@
+name: Deploy Function App Code
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+env:
+  FUNCTION_PROJECT: Backend/fa-graduate-voters/API/API.csproj
+  PUBLISH_DIRECTORY: ./publish
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Select environment
+        shell: bash
+        run: |
+          case "$GITHUB_REF_NAME" in
+            dev)
+              PARAM_FILE=Modules/deploy.dev.bicepparam
+              ;;
+            main)
+              PARAM_FILE=Modules/deploy.prod.bicepparam
+              ;;
+            *)
+              echo "Unsupported branch: $GITHUB_REF_NAME"
+              exit 1
+              ;;
+          esac
+
+          AZURE_RESOURCE_GROUP=$(sed -n "s/\r$//; s/^param resourceGroupName = '\([^']*\)'$/\1/p" "$PARAM_FILE")
+          if [ -z "$AZURE_RESOURCE_GROUP" ]; then
+            echo "Could not read resourceGroupName from $PARAM_FILE."
+            exit 1
+          fi
+
+          echo "PARAM_FILE=$PARAM_FILE" >> "$GITHUB_ENV"
+          echo "AZURE_RESOURCE_GROUP=$AZURE_RESOURCE_GROUP" >> "$GITHUB_ENV"
+
+      - name: Set up .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Publish Function App
+        run: dotnet publish "$FUNCTION_PROJECT" --configuration Release --output "$PUBLISH_DIRECTORY"
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Find Function App
+        id: find-function-app
+        shell: bash
+        run: |
+          FUNCTION_APP_NAME=$(sed -n "s/\r$//; s/^param functionAppName = '\([^']*\)'$/\1/p" "$PARAM_FILE")
+
+          if [ -z "$FUNCTION_APP_NAME" ]; then
+            echo "Could not read functionAppName from $PARAM_FILE."
+            exit 1
+          fi
+
+          if ! az functionapp show \
+            --resource-group "$AZURE_RESOURCE_GROUP" \
+            --name "$FUNCTION_APP_NAME" \
+            --output none; then
+            echo "Function App $FUNCTION_APP_NAME was not found in $AZURE_RESOURCE_GROUP. Infrastructure deployment may have failed."
+            exit 1
+          fi
+
+          echo "function_app_name=$FUNCTION_APP_NAME" >> "$GITHUB_OUTPUT"
+
+      - name: Deploy Function App code
+        uses: Azure/functions-action@v1
+        with:
+          app-name: ${{ steps.find-function-app.outputs.function_app_name }}
+          package: ${{ env.PUBLISH_DIRECTORY }}

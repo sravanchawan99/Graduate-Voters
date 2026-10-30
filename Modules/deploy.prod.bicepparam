@@ -1,0 +1,12 @@
+using './main.bicep'
+
+param resourceGroupName = 'rg-graduate-voters-prod'
+param location = 'eastasia'
+param storageAccountName = 'stgraduatevotersprod'
+param serviceBusNamespaceName = 'sb-graduate-voters-prod'
+param queueName = 'voter-export'
+param functionAppName = 'fa-graduate-voters-prod'
+param functionPlanName = 'plan-graduate-voters-prod'
+param appInsightsName = 'appi-graduate-voters-prod'
+param staticWebAppName = 'swa-graduate-voters-prod'
+param customDomainName = 'www.thevoter.in'
